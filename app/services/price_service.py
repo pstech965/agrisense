@@ -7,40 +7,6 @@ from app.models import Crop, Market, PriceRecord
 def _rows(result) -> list[dict]:
     return [dict(row._mapping) for row in result]
 
-# def list_prices(
-#     session: Session, 
-#     crop: Optional[str], 
-#     market_id: Optional[int],
-#     date_from: Optional[date],
-#     date_to: Optional[date],
-#     limit: int, 
-#     offset: int,
-# ) -> list[dict]:
-#     stmt =(
-#         select(
-#             PriceRecord.price_date,
-#             Crop.name.label("crop"),
-#             Market.name.label("market"),
-#             Market.state,
-#             PriceRecord.modal_price,
-#             PriceRecord.min_price,
-#             PriceRecord.max_price,
-#         )
-#         .join(Crop, Crop.id == PriceRecord.crop_id)
-#         .join(Market, Market.id == PriceRecord.market_id)
-#     )
-#     if crop: 
-#         stmt = stmt.where(func.lower(Crop.name)== crop.lower())
-#         if market_id: 
-#             stmt= stmt.where(PriceRecord.market_id == market_id)
-#         if date_from:
-#             stmt= stmt.where(PriceRecord.price_date >= date_from)
-#         if date_to:
-#             stmt = stmt.where(PriceRecord.price_date <= date_to)
-#         stmt = stmt.order_by(PriceRecord.price_date.desc(), PriceRecord.id).limit(limit).offset(offset)
-#         return _rows(session.exec(stmt))
-    
-
 def list_prices(
     session: Session,
     crop: Optional[str],

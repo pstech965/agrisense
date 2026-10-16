@@ -1,63 +1,67 @@
+
 from datetime import date
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
+
+from app.config import settings
 from app.database import get_session
+from app.ratelimit import rate_limit
 from app.schemas import LatestPrice, PriceRead
 from app.services import price_service
 
-
 router = APIRouter(prefix="/prices", tags=["prices"])
 
+read_limit = rate_limit(settings.read_limit_per_min, 60)
 
-@router.get("", response_model=list[PriceRead])
+
+@router.get(
+    "",
+    response_model=list[PriceRead],
+    dependencies=[Depends(read_limit)],
+)
 def get_prices(
- crop: Optional[str] = None,
- market_id: Optional[int] = None,
- date_from: Optional[date] = None,
- date_to: Optional[date] = None,
- limit: int = Query(20, ge=1, le=100),
- offset: int = Query(0, ge=0),
- session: Session = Depends(get_session),
+    crop: Optional[str] = None,
+    market_id: Optional[int] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
 ):
-    return price_service.list_prices(session, crop, market_id, date_from, date_to, limit, offset)
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(
+            status_code=400,
+            detail="date_from cannot be later than date_to",
+        )
+
+    return price_service.list_prices(
+        session,
+        crop,
+        market_id,
+        date_from,
+        date_to,
+        limit,
+        offset,
+    )
 
 
-@router.get("/latest", response_model=list[LatestPrice])
-def latest(crop: str, session: Session = Depends(get_session)):
+@router.get(
+    "/latest",
+    response_model=list[LatestPrice],
+    dependencies=[Depends(read_limit)],
+)
+def latest(
+    crop: str,
+    session: Session = Depends(get_session),
+):
     rows = price_service.latest_prices(session, crop)
+
     if not rows:
-        raise HTTPException(404, f"'{crop}' no crops prices found!")
+        raise HTTPException(
+            status_code=404,
+            detail=f"No crop prices found for '{crop}'!",
+        )
+
     return rows
-
-
-
-
-# from datetime import date
-# from typing import Optional
-# from fastapi import APIRouter, Depends, HTTPException, Query
-# from sqlmodel import Session
-# from app.database import get_session
-# from app.schemas import LatestPrice, PriceRead
-# from app.services import price_service
-
-# router = APIRouter(prefix= "/prices", tags= ["prices"])
-
-# @router.get("", response_model=list[PriceRead])
-# def get_prices(
-#     crop: Optional[str]= None,
-#     market_id: Optional[int]= None,
-#     date_from: Optional[date]= None,
-#     date_to: Optional[date]= None,
-#     limit: int = Query(20, ge=1, le= 100),
-#     offset: int = Query(0, ge=0),
-#     session: Session= Depends(get_session),
-# ):
-#     return price_service.list_price(session, crop, market_id, date_from, date_to, limit, offset)
-
-# @router.get("/latest", response_model=list[LatestPrice])
-# def latest(crop: str, session: Session= Depends(get_session)):
-#     rows = price_service.latest_price(session, crop)
-#     if not rows:
-#         raise HTTPException(404, f"'{crop}'  no crops prices found!")
-#     return rows
