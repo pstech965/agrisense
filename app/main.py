@@ -16,6 +16,7 @@ app.include_router(prices.router)
 app.include_router(auth.router)
 app.include_router(listings.router)
 
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "agrisense"}

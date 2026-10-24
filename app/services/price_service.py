@@ -1,11 +1,13 @@
-from datetime import date 
+from datetime import date
 from typing import Optional
 from sqlalchemy import func, text
 from sqlmodel import Session, select
 from app.models import Crop, Market, PriceRecord
 
+
 def _rows(result) -> list[dict]:
     return [dict(row._mapping) for row in result]
+
 
 def list_prices(
     session: Session,
@@ -31,31 +33,19 @@ def list_prices(
     )
 
     if crop:
-        stmt = stmt.where(
-            func.lower(Crop.name) == crop.lower()
-        )
+        stmt = stmt.where(func.lower(Crop.name) == crop.lower())
 
     if market_id is not None:
-        stmt = stmt.where(
-            PriceRecord.market_id == market_id
-        )
+        stmt = stmt.where(PriceRecord.market_id == market_id)
 
     if date_from:
-        stmt = stmt.where(
-            PriceRecord.price_date >= date_from
-        )
+        stmt = stmt.where(PriceRecord.price_date >= date_from)
 
     if date_to:
-        stmt = stmt.where(
-            PriceRecord.price_date <= date_to
-        )
+        stmt = stmt.where(PriceRecord.price_date <= date_to)
 
     stmt = (
-        stmt
-        .order_by(
-            PriceRecord.price_date.desc(),
-            PriceRecord.id
-        )
+        stmt.order_by(PriceRecord.price_date.desc(), PriceRecord.id)
         .limit(limit)
         .offset(offset)
     )
@@ -74,4 +64,32 @@ def latest_prices(session: Session, crop: str) -> list[dict]:
     WHERE LOWER(c.name) = LOWER(:crop)
     ORDER BY p.market_id, p.price_date DESC
     """
-    return _rows(session.exec(text(sql), params={"crop": crop}))        
+    return _rows(session.exec(text(sql), params={"crop": crop}))
+
+
+def add_price(
+    session: Session, crop_id: int, market_id: int, modal_price: float, price_date: date
+) -> dict:
+    crop = session.get(Crop, crop_id)
+    market = session.get(Market, market_id)
+    if crop is None or market is None:
+        raise ValueError("Crop or MArket not found")
+    record = PriceRecord(
+        crop_id=crop_id,
+        market_id=market_id,
+        price_date=price_date,
+        modal_price=modal_price,
+        min_price=round(modal_price * 0.95, 2),
+        max_price=round(modal_price * 1.05, 2),
+    )
+    session.add(record)
+    session.commit()
+    return dict(
+        price_date=price_date,
+        crop=crop.name,
+        market=market.name,
+        state=market.state,
+        modal_price=record.modal_price,
+        min_price=record.min_price,
+        max_price=record.max_price,
+    )

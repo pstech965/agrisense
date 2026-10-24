@@ -23,7 +23,7 @@ def create_listing(
     listing= Listing(farmer_id=user.id, **body.model_dump())
     session.add(listing)
     session.commit()
-    session.refresh(Listing)
+    session.refresh(listing)
     return listing
 
 
