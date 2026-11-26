@@ -25,7 +25,7 @@ class GeminiClient:
         self.model = settings.gemini_model
         self.client = genai.Client(
             api_key =settings.gemini_api_key,
-            http_options = types.httpOptions(timeout= 120_000), 
+            http_options = types.HttpOptions(timeout= 120_000), 
         )
         
     @staticmethod
@@ -64,14 +64,14 @@ class GeminiClient:
             types.FunctionDeclaration(name = t.name, description = t.description, parameters = t.parameters)
             for t in tools 
         ]
-        config = types.GenerateContentConfing(
+        config = types.GenerateContentConfig(
             system_instruction = system,
             tools = [types.Tool(function_declarations=declarations)] if declarations else None,
-            temprature =0.2,
+            temperature=0.2,
             
         )
         response = self.client.models.generate_content(
-            model= self.model, comtents= self.to_contents(messages, types), config =config)
+            model= self.model, contents= self.to_contents(messages, types), config =config)
         content = response.candidates[0].content
         text = "".join(p.text for p in (content.parts or []) if getattr(p, "text", None))
         calls = [ToolCall(name=fc.name, args=dict(fc.args or {}), id=getattr(fc, "id", None))
